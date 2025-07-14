@@ -1,18 +1,18 @@
-// import express from "express";
-// import {
-//   createPlace,
-//   getPlace,
-//   getPlaces,
-//   updatePlace,
-//   deletePlace,
-// } from "../controllers/placesController.mjs";
+import express from "express";
+import {
+  createPlace,
+  getPlaces,
+  deleteAllPlaces,
+  getPlace,
+  updatePlace,
+  deletePlace,
+} from "../controllers/placeController.mjs";
 
-// const router = express.Router();
+const router = express.Router();
 
 // router.get("/", getPlaces);
-// router.post("/", createPlace);
-// router.get("/:id", getPlace);
-// router.patch("/:id", updatePlace);
-// router.delete("/:id", deletePlace);
+router.route("/").post(createPlace).get(getPlaces).delete(deleteAllPlaces);
 
-// export default router;
+router.route("/:id").get(getPlace).patch(updatePlace).delete(deletePlace);
+
+export default router;
