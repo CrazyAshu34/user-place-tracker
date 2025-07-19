@@ -1,16 +1,26 @@
 import express from "express";
 import {
-  createUser,
+  signup,
   getUsers,
+  login,
   getUser,
   deleteUser,
   deleteAllUsers,
   updateUser,
 } from "../controllers/usersController.mjs";
+import checkAuth from "../middleware/checkAuth.mjs";
 
 const router = express.Router();
 
-router.route("/").post(createUser).get(getUsers).delete(deleteAllUsers);
-router.route("/:id").get(getUser).delete(deleteUser).patch(updateUser);
+router.post("/signup", signup);
+router.post("/login", login);
+
+// Protected routes
+router.use(checkAuth);
+
+router.get("/", getUsers);
+router.delete("/", deleteAllUsers);
+
+router.route("/:id").get(getUser).patch(updateUser).delete(deleteUser);
 
 export default router;

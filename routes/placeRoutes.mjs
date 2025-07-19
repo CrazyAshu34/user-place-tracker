@@ -1,4 +1,5 @@
 import express from "express";
+import upload from "../middleware/fileUpload.mjs";
 import {
   createPlace,
   getPlaces,
@@ -7,12 +8,18 @@ import {
   updatePlace,
   deletePlace,
 } from "../controllers/placeController.mjs";
-
+import checkAuth from "../middleware/checkAuth.mjs";
 const router = express.Router();
 
-// router.get("/", getPlaces);
-router.route("/").post(createPlace).get(getPlaces).delete(deleteAllPlaces);
+// ❌ Public routes
+router.get("/", getPlaces);
+router.get("/:id", getPlace);
 
-router.route("/:id").get(getPlace).patch(updatePlace).delete(deletePlace);
+// ✅ Protected routes
+
+router.post("/add", upload.single("image"), checkAuth, createPlace);
+router.patch("/update/:id", upload.single("image"), checkAuth, updatePlace);
+router.delete("/:id", checkAuth, deletePlace);
+router.delete("/", checkAuth, deleteAllPlaces);
 
 export default router;

@@ -37,6 +37,7 @@ export const getPlaces = async (req, res, next) => {
 // CREATE NEW PLACE
 export const createPlace = async (req, res, next) => {
   const { title, description, address, creator } = req.body;
+  const imagePath = req.file?.path;
 
   try {
     // Check if place already exists for this creator
@@ -58,7 +59,13 @@ export const createPlace = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    const newPlace = new Place({ title, description, address, creator });
+    const newPlace = new Place({
+      title,
+      description,
+      address,
+      image: imagePath,
+      creator,
+    });
     await newPlace.save({ session });
 
     userObj.placesInUser.push(newPlace._id); // Store only the ID (best practice)
@@ -79,50 +86,33 @@ export const createPlace = async (req, res, next) => {
 
 // UPDATE SINGLE PLACE
 export const updatePlace = async (req, res, next) => {
-  const newData = req.body;
   const { id } = req.params;
+
+  const { title, description, address } = req.body;
+  const myImage = req.file?.path;
+
+  const updateData = { title, description, address };
+  if (myImage) {
+    updateData.image = myImage;
+  }
+
+  console.log("Uploaded file path:", req.file?.path);
+
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "Invalid place id" });
   }
+
   try {
     const myExistPlace = await Place.findById(id);
     if (!myExistPlace) {
       return res.status(404).json({ message: "not found place" });
     }
-    const updatedPlace = await Place.findByIdAndUpdate(id, newData, {
+    const updatedPlace = await Place.findByIdAndUpdate(id, updateData, {
       new: true,
     });
     return res.status(200).json({ message: "Got you place", updatedPlace });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
-  }
-};
-
-// DELETE SINGLE PLACE
-export const deletePlace = async (req, res, next) => {
-  const placeId = req.params.id;
-  if (!mongoose.Types.ObjectId.isValid(placeId)) {
-    return res.status(400).json({ message: "Invalid place id" });
-  }
-  try {
-    const D_place = await Place.findById(placeId).populate("creator");
-    if (!D_place) {
-      return res.status(404).json({ message: "Place not found" });
-    }
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    await D_place.deleteOne({ session });
-    D_place.creator.placesInUser.pull(placeId);
-    await D_place.creator.save({ session }); // <-- yahan await lagao
-
-    await session.commitTransaction();
-    session.endSession(); // <-- yahan await mat lagao
-
-    return res.status(200).json({ message: "Place deleted" });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -132,4 +122,56 @@ export const deleteAllPlaces = async (req, res, next) => {
   return res
     .status(200)
     .json({ message: "all places are gone. Sorry about that!" });
+};
+
+// DELETE SINGLE PLACE
+export const deletePlace = async (req, res, next) => {
+  const placeId = req.params.id;
+
+  // Validate MongoDB ObjectId
+  if (!mongoose.Types.ObjectId.isValid(placeId)) {
+    return res.status(400).json({ message: "Invalid place ID format." });
+  }
+
+  try {
+    // Populate creator field from place document
+    const placeToDelete = await Place.findById(placeId).populate("creator");
+
+    if (!placeToDelete) {
+      return res.status(404).json({ message: "Place not found." });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Delete place
+      await placeToDelete.deleteOne({ session });
+
+      // Remove reference from user's places array
+      placeToDelete.creator.placesInUser.pull(placeId);
+
+      // Save updated user with session
+      await placeToDelete.creator.save({ session, validateBeforeSave: false });
+
+      // Commit transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.status(200).json({ message: "Place deleted successfully." });
+    } catch (transactionError) {
+      await session.abortTransaction();
+      session.endSession();
+
+      return res.status(500).json({
+        success: false,
+        message: "Transaction failed: " + transactionError.message,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error: " + error.message,
+    });
+  }
 };
