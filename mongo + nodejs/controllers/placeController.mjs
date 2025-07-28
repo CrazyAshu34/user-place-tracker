@@ -37,7 +37,12 @@ export const getPlaces = async (req, res, next) => {
 // CREATE NEW PLACE
 export const createPlace = async (req, res, next) => {
   const { title, description, address, creator } = req.body;
-  const imagePath = req.file?.path;
+  // const imagePath = req.file?.path;
+  const imagePath = req.file
+    ? `${req.protocol}://${req.get(
+        "host"
+      )}/uploads/images/${req.file.filename.replace(/\\/g, "/")}`
+    : null;
 
   try {
     // Check if place already exists for this creator
@@ -89,7 +94,12 @@ export const updatePlace = async (req, res, next) => {
   const { id } = req.params;
 
   const { title, description, address } = req.body;
-  const myImage = req.file?.path;
+  // const myImage = req.file?.path;
+  const myImage = req.file
+    ? `${req.protocol}://${req.get(
+        "host"
+      )}/uploads/images/${req.file.filename.replace(/\\/g, "/")}`
+    : null;
 
   const updateData = { title, description, address };
   if (myImage) {
